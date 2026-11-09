@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  PRODUKSI
+}
+
+enum OrderStatus {
+  PENDING
+  PROSES_CETAK
+  QC_PACKING
+  DALAM_PENGIRIMAN
+  SELESAI
+}
+
+model User {
+  id       String @id @default(cuid())
+  name     String
+  email    String @unique
+  password String // Digunakan oleh NextAuth Credentials (hashed)
+  role     Role   @default(PRODUKSI)
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  company   String?
+  whatsapp  String
+  address   String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String
+  specialty String
+  orders    Order[]
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  orderNumber    String      @unique
+  clientId       String
+  client         Client      @relation(fields: [clientId], references: [id])
+  vendorId       String
+  vendor         Vendor      @relation(fields: [vendorId], references: [id])
+  productType    String
+  specifications String      @db.Text
+  quantity       Int
+  fileUrl        String      // Link Google Drive File Cetak
+  resiNumber     String?     // Diisi oleh role PRODUKSI
+  status         OrderStatus @default(PENDING)
+  finance        Finance?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Finance {
+  id            String  @id @default(cuid())
+  orderId       String  @unique
+  order         Order   @relation(fields: [orderId], references: [id])
+  vendorCost    Decimal @db.Decimal(10, 2)
+  sellingPrice  Decimal @db.Decimal(10, 2)
+  shippingFee   Decimal @db.Decimal(10, 2) @default(0)
+  paymentStatus String  // Enum string: UNPAID, DP_50, PAID
+}
+
+model Cashflow {
+  id          String   @id @default(cuid())
+  type        String   // INCOME atau EXPENSE
+  amount      Decimal  @db.Decimal(10, 2)
+  description String
+  date        DateTime @default(now())
+}
